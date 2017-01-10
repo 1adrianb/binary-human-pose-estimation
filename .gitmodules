@@ -1,3 +1,6 @@
 [submodule "optimize-net"]
 	path = optimize-net
 	url = https://github.com/1adrianb/optimize-net
+[submodule "bnn.torch"]
+	path = bnn.torch
+	url = https://github.com/1adrianb/bnn.torch
