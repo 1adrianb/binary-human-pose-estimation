@@ -23,7 +23,7 @@ function image.drawLine(surface, startxy, endxy, width, color)
 				err2 = err2 + diff[1]
 			end
 			if (startxy[1] == endxy[1]) then break end
-				err2 = err; err = err - diff[2]; startxy[1] = startxy[1] + sx
+			err2 = err; err = err - diff[2]; startxy[1] = startxy[1] + sx
 		end
 		if (2*err2 <= diff[2]) then
 			err2 = diff[1]-err2
@@ -32,7 +32,7 @@ function image.drawLine(surface, startxy, endxy, width, color)
 				surface[{{},x2,startxy[2]}]:fill(color)
 				err2 = err2 + diff[2]
 			end
-		if (startxy[2] == endxy[2]) then break end
+			if (startxy[2] == endxy[2]) then break end
 			err = err + diff[1]; startxy[2] = startxy[2] + sy;
 		end
 	end
@@ -42,14 +42,14 @@ end
 
 -- Basic method to draw circles
 function image.drawPoint(surface, point, r, color)
-	for x = -r,r do 
+	for x = -r, r do
 		local height = math.sqrt(r*r-x*x)
 		
 		for y = -height, height do
 			surface[{{},x+point[1],y+point[2]}]:fill(color)
 		end
 	end
-	return drawPoint
+	return surface
 end
 
 

@@ -128,4 +128,83 @@ function utils.calcDistance(predictions,groundTruth)
   return dists
 end
 
+local function subrange(t, first, last)
+  local sub = {}
+  for i=first,last do
+    sub[#sub + 1] = t[i]
+  end
+  return sub
+end
+
+function utils.getFileList(opts)
+	local fileLists = {}
+
+	if opts.imagepath ~= '' then
+		fileLists[1] = {opts.imagepath}
+	else
+		local fileLists = torch.load('dataset/mpii_dataset.t7')
+        if opts.mode == demo then
+            fileLists = subrange(fileLists, 1, 10)
+        end
+	end
+	
+	return fileLists
+end
+
+-- Requires qtlua
+function utils.plot(surface, points)
+	assert(points:nDimension()~=2 or points:size(2)~=2,"Points need to be in the nx2 format")
+	
+	local pointPairs = {
+		{1,2}, {2,3}, {3,7},
+		{4,5}, {4,7}, {5,6},
+		{7,9}, {9,10}, 
+		{14,9},{11,12},{12,13},
+		{13,9},{14,15},{15,16}
+	}
+	local partColor = {1,1,1,2,2,2,0,0,0,0,3,3,3,4,4,4}
+	
+	for i = 1, points:size(1) do
+		surface = image.drawPoint(surface, points[{{i},{}}], 3, 100)
+	end
+	
+	for i = 1, #pointPairs do
+		surface = image.drawLine(surface, points[{{pointPairs[i][1]},{}}],
+						points[{{pointPairs[i][1]},{}}], 3, partColor[i])
+	end
+	
+	image.display{
+		input = surface, zoom = 2, gui = true
+	}
+end
+
+function utils.calculateMetrics(dists)
+    local threshold = 0.5
+    dists:apply(function(x)
+        if x>=0 and x<= threshold then 
+            return 1
+        elseif x>threshold then 
+            return 0
+        end
+    end)
+
+    local count = torch.zeros(16)
+    local sums = torch.zeros(16)
+    for i=1,16 do
+        dists[i]:apply(function(x)
+            if x ~= -1 then
+                count[i] = count[i] + 1
+                sums[i] = sums[i] + x
+            end
+        end)
+    end
+
+    local partNames = {'Head', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist', 'Hip'}
+    local partsC =  torch.Tensor({{9,10},{2,5},{1,6},{13,14},{12,15},{11,16},{3,4}})
+    print('PCKh results:')
+    for i=1,#partNames do
+        print(partNames[i]..': ',(sums[partsC[i][1]]/count[partsC[i][1]]+sums[partsC[i][2]]/count[partsC[i][1]])*100/2)
+    end    
+end
+
 return utils
