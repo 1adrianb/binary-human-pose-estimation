@@ -6,7 +6,6 @@ local function parse(arg)
 	cmd:text()
 	cmd:text('Options:')
 	
-	cmd:option('-imagepath',	'', 	'Path to the pre-processed(!) image')
 	cmd:option('-mode',			'demo', 'Options: demo | eval')
 	
 	cmd:text()

@@ -35,13 +35,13 @@ function utils.crop(img, center, scale, res)
 
     local pad = math.floor(torch.norm((l1 - l2):float())/2 - (l2[1]-l1[1])/2)
     
-    if img:size():size() < 3 then
+    if img:nDimension() < 3 then
       img = torch.repeatTensor(img,3,1,1)
     end
 
-    local newDim = torch.IntTensor({img:size()[1], l2[2] - l1[2], l2[1] - l1[1]})
+    local newDim = torch.IntTensor({img:size(1), l2[2] - l1[2], l2[1] - l1[1]})
     local newImg = torch.zeros(newDim[1],newDim[2],newDim[3])
-    local height, width = img:size()[2], img:size()[3]
+    local height, width = img:size(2), img:size(3)
 
     local newX = torch.Tensor({math.max(1, -l1[1]+1), math.min(l2[1], width) - l1[1]})
     local newY = torch.Tensor({math.max(1, -l1[2]+1), math.min(l2[2], height) - l1[2]})
@@ -55,7 +55,7 @@ function utils.crop(img, center, scale, res)
 end
 
 function utils.getPreds(heatmaps, center, scale)
-    if heatmaps:size():size() == 3 then heatmaps = heatmaps:view(1, unpack(heatmaps:size():totable())) end
+    if heatmaps:nDimension() == 3 then heatmaps = heatmaps:view(1, unpack(heatmaps:size():totable())) end
 
     -- Get locations of maximum activations
     local max, idx = torch.max(heatmaps:view(heatmaps:size(1), heatmaps:size(2), heatmaps:size(3) * heatmaps:size(4)), 3)
@@ -141,35 +141,98 @@ end
 
 function utils.getFileList(opts)
 	local fileLists = {}
-
-	if opts.imagepath ~= '' then
-		fileLists[1] = {opts.imagepath}
-	else
-		fileLists = torch.load('dataset/mpii_dataset.t7')
-        if opts.mode == 'demo' then
-            local tempFileList = {}
-            local idxs = {1,5,16,17,18,24,28,63,66,104}
-            for i = 1, #idxs do
-                tempFileList[i] = fileLists[idxs[i]]
-            end
-            fileLists = tempFileList
+	tempFileList = torch.load('dataset/mpii_dataset.t7')
+    if opts.mode == 'demo' then
+        local idxs = {1,5,16,17,18,24,28,63,66,104}
+        for i = 1, #idxs do
+            fileLists[i] = tempFileList[idxs[i]]
         end
-	end
-    print(fileLists)
+	else
+		for i = 1, #tempFileList do
+			if tempFileList[i]['type'] == 0 then
+				fileLists[#fileLists+1] = tempFileList[i]
+			end
+		end
+    end
 	return fileLists
 end
 
--- Requires qtlua
-function utils.plot(surface, points)
+-- Requires gnuplot
+function utils.plot(surface, points, size)
+	points = points:view(16,2)
+   
+	local matched_parts = {
+		{1,2}, {2,3}, {3,7},
+		{4,5}, {5,6}, {4,7},
+		{9,10},{7,8},
+		{11,12}, {12,13}, {13,8},
+		{8,14}, {14,15}, {15,16}
+	}
+	
+	local parts_colours = {
+		"blue", "blue", "blue",
+		"red", "red", "red",
+		"#9400D3", "#9400D3",
+		"blue", "blue", "blue",
+		"red", "red", "red"
+	}
 	
     gnuplot.figure(1)
     gnuplot.raw("set size ratio -1")
+	gnuplot.raw("set xrange [0:"..size[1].."]")
+	gnuplot.raw("set yrange [0:"..size[2].."]")
     gnuplot.raw("unset key; unset tics; unset border;")
-    gnuplot.raw("plot '"..surface.."' binary filetype=jpg with rgbimage")
-   
+	gnuplot.raw("set multiplot layout 1,1 margins 0.05,0.95,.1,.99 spacing 0,0")
+    gnuplot.raw("plot '"..surface.."' binary filetype=jpg with rgbimage")  
+
+	gnuplot.raw(" set yrange ["..size[2]..":0] ") 
+
+	commands = {}
+	for i = 1, #matched_parts do
+		commands[i] = {torch.Tensor{points[matched_parts[i][1]][1],points[matched_parts[i][2]][1]},torch.Tensor{points[matched_parts[i][1]][2],points[matched_parts[i][2]][2]},'with lines lw 5 linecolor rgb "'..parts_colours[i]..'"'}
+	end
+	gnuplot.plot(unpack(commands))
+	gnuplot.raw("unset multiplot")
+end
+
+local function displayPCKh(dists, idxs, title, disp_key)
+	local xs = torch.linspace(0,0.5,30)
+	local ys = torch.zeros(xs:size(1))
+	local total = {dists[{idxs[1],{}}]:gt(-1):sum(),
+					dists[{idxs[2],{}}]:gt(-1):sum()}
+	for i = 1, xs:size(1) do
+		ys[i] = 0.5*((dists[{idxs[1],{}}]:lt(xs[i]):sum()-(dists:size(2)-total[1]))/total[1]+(dists[{idxs[2],{}}]:lt(xs[i]):sum()-(dists:size(2)-total[2]))/total[2])
+	end
+
+	local command = {xs,ys,'-'}
+	gnuplot.raw('set title "'..title..'"')
+	if not disp_key then 
+		gnuplot.raw('unset key')
+	else
+		gnuplot.raw('set key font ",6" right bottom')
+	end
+	gnuplot.raw('set xrange [0:0.5]')
+	gnuplot.raw('set yrange [0:1]')
+	gnuplot.plot(unpack(command))
 end
 
 function utils.calculateMetrics(dists)
+	gnuplot.raw('set bmargin 1')
+	gnuplot.raw('set lmargin 3.2')
+	gnuplot.raw('set rmargin 2')
+	gnuplot.raw('set multiplot layout 2,3 title "MPII Validation (PCKh)"')
+	gnuplot.raw('set xtics font ",6"')
+	gnuplot.raw('set xtics font ",6"')
+	displayPCKh(dists, {9,10}, 'Head')
+	displayPCKh(dists, {2,5}, 'Knee')
+	displayPCKh(dists, {1,6}, 'Ankle')
+	gnuplot.raw('set tmargin 2.5')
+	gnuplot.raw('set bmargin 1.5')
+	displayPCKh(dists, {13,14}, 'Shoulder')
+	displayPCKh(dists, {12,15}, 'Elbow')
+	displayPCKh(dists, {11,16}, 'Wrist', true)	
+	gnuplot.raw('unset multiplot')
+	
     local threshold = 0.5
     dists:apply(function(x)
         if x>=0 and x<= threshold then 
@@ -195,7 +258,7 @@ function utils.calculateMetrics(dists)
     print('PCKh results:')
     for i=1,#partNames do
         print(partNames[i]..': ',(sums[partsC[i][1]]/count[partsC[i][1]]+sums[partsC[i][2]]/count[partsC[i][1]])*100/2)
-    end    
+    end
 end
 
 return utils
