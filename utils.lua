@@ -1,7 +1,7 @@
 local utils = {}
 
 function utils.getTransform(center, scale, res)
-	local h = 200*sclae
+	local h = 200*scale
 	local t = torch.eye(3)
 	
 	-- Scale
@@ -11,8 +11,8 @@ function utils.getTransform(center, scale, res)
 	-- Translate
 	t[1][3] = res*(-center[1]/h+0.5)
 	t[2][3] = res*(-center[2]/h+0.5)
-	
-	return torch
+
+	return t
 end
 
 -- Transform the coordinates from the original image space to the cropped one
@@ -20,7 +20,7 @@ function utils.transform(pt, center, scale, res, invert)
     -- Define the transformation matrix
     local pt_new = torch.ones(3)
     pt_new[1], pt_new[2] = pt[1], pt[2]
-    local t = getTransform(center, scale, res)
+    local t = utils.getTransform(center, scale, res)
     if invert then
         t = torch.inverse(t)
     end
@@ -30,8 +30,8 @@ end
 
 -- Crop based on the image center & scale
 function utils.crop(img, center, scale, res)
-    local l1 = transform({1,1}, center, scale, res, true)
-    local l2 = transform({res,res}, center, scale, res, true)
+    local l1 = utils.transform({1,1}, center, scale, res, true)
+    local l2 = utils.transform({res,res}, center, scale, res, true)
 
     local pad = math.floor(torch.norm((l1 - l2):float())/2 - (l2[1]-l1[1])/2)
     
@@ -61,16 +61,27 @@ function utils.getPreds(heatmaps, center, scale)
     local max, idx = torch.max(heatmaps:view(heatmaps:size(1), heatmaps:size(2), heatmaps:size(3) * heatmaps:size(4)), 3)
     local preds = torch.repeatTensor(idx, 1, 1, 2):float()
     preds[{{}, {}, 1}]:apply(function(x) return (x - 1) % heatmaps:size(4) + 1 end)
-    preds[{{}, {}, 2}]:add(-1):div(heatmaps:size(3)):floor():add(.5)
+    preds[{{}, {}, 2}]:add(-1):div(heatmaps:size(3)):floor():add(1)
+
+    for i = 1,preds:size(1) do        
+        for j = 1,preds:size(2) do
+            local hm = heatmaps[{i,j,{}}]
+            local pX, pY = preds[{i,j,1}], preds[{i,j,2}]
+            if pX > 1 and pX < 64 and pY > 1 and pY < 64 then
+                local diff = torch.FloatTensor({hm[pY][pX+1]-hm[pY][pX-1], hm[pY+1][pX]-hm[pY-1][pX]})
+                preds[i][j]:add(diff:sign():mul(.25))
+            end
+        end
+    end
+    preds:add(-0.5)
 
     -- Get the coordinates in the original space
     local preds_orig = torch.zeros(preds:size())
-    for i = 1,heatmaps:size(1) do        
-        for j = 1,heatmaps:size(2) do
-            preds_orig[i][j] = transform(preds[i][j],center,scale,heatmaps:size(3),true)
+    for i = 1, heatmaps:size(1) do
+        for j = 1, heatmaps:size(2) do
+            preds_orig[i][j] = utils.transform(preds[i][j],center,scale,heatmaps:size(3),true)
         end
     end
-
     return preds, preds_orig
 end
 
@@ -128,54 +139,34 @@ function utils.calcDistance(predictions,groundTruth)
   return dists
 end
 
-local function subrange(t, first, last)
-  local sub = {}
-  for i=first,last do
-    sub[#sub + 1] = t[i]
-  end
-  return sub
-end
-
 function utils.getFileList(opts)
 	local fileLists = {}
 
 	if opts.imagepath ~= '' then
 		fileLists[1] = {opts.imagepath}
 	else
-		local fileLists = torch.load('dataset/mpii_dataset.t7')
-        if opts.mode == demo then
-            fileLists = subrange(fileLists, 1, 10)
+		fileLists = torch.load('dataset/mpii_dataset.t7')
+        if opts.mode == 'demo' then
+            local tempFileList = {}
+            local idxs = {1,5,16,17,18,24,28,63,66,104}
+            for i = 1, #idxs do
+                tempFileList[i] = fileLists[idxs[i]]
+            end
+            fileLists = tempFileList
         end
 	end
-	
+    print(fileLists)
 	return fileLists
 end
 
 -- Requires qtlua
 function utils.plot(surface, points)
-	assert(points:nDimension()~=2 or points:size(2)~=2,"Points need to be in the nx2 format")
 	
-	local pointPairs = {
-		{1,2}, {2,3}, {3,7},
-		{4,5}, {4,7}, {5,6},
-		{7,9}, {9,10}, 
-		{14,9},{11,12},{12,13},
-		{13,9},{14,15},{15,16}
-	}
-	local partColor = {1,1,1,2,2,2,0,0,0,0,3,3,3,4,4,4}
-	
-	for i = 1, points:size(1) do
-		surface = image.drawPoint(surface, points[{{i},{}}], 3, 100)
-	end
-	
-	for i = 1, #pointPairs do
-		surface = image.drawLine(surface, points[{{pointPairs[i][1]},{}}],
-						points[{{pointPairs[i][1]},{}}], 3, partColor[i])
-	end
-	
-	image.display{
-		input = surface, zoom = 2, gui = true
-	}
+    gnuplot.figure(1)
+    gnuplot.raw("set size ratio -1")
+    gnuplot.raw("unset key; unset tics; unset border;")
+    gnuplot.raw("plot '"..surface.."' binary filetype=jpg with rgbimage")
+   
 end
 
 function utils.calculateMetrics(dists)
