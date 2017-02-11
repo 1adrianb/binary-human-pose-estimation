@@ -4,6 +4,9 @@ luac.out
 # Torch serialised objects
 *.t7
 
+# Images
+*.jpg
+
 # luarocks build files
 *.src.rock
 *.zip
