@@ -1,8 +1,8 @@
-# Binarized Convolutional Landmark Localizers for Real-time Human Pose Estimation and Face Alignment
+# Binarized Convolutional Landmark Localizers for Human Pose Estimation and Face Alignment with Limited Resources 
 
-This code implements a demo of the Binarized Convolutional Landmark Localizers for Real-time Human Pose Estimation and Face Alignment paper by Adrian Bulat and Georgios Tzimiropoulos.
+This code implements a demo of the Binarized Convolutional Landmark Localizers for Human Pose Estimation and Face Alignment with Limited Resources paper by Adrian Bulat and Georgios Tzimiropoulos.
 
-*** Training code will be released soon ***
+**For the Face Alignment demo please check: [https://github.com/1adrianb/binary-face-alignment](https://github.com/1adrianb/binary-face-alignment)**
 
 ## Requirements
 - Install the latest [Torch7](http://torch.ch/docs/getting-started.html) version (for Windows, please follow the instructions avaialable [here](https://github.com/torch/distro/blob/master/win-files/README.md))
@@ -38,6 +38,7 @@ Run the following command to prepare the files required by the demo. This will d
 ```bash
 th download-content.lua
 ```
+Download the model available bellow and place it in the models folder. 
 
 ## Usage
 
@@ -48,9 +49,15 @@ th main.lua
 
 ## Pretrained models
 
+| Layer type | Model Size | MPII  error |
+| ------------- | ----------- | ----------- |
+| [MPII](https://www.adrianbulat.com/downloads/BinaryHumanPose/human_pose_binary.t7)        | 1.3MB |76.0        |
+
+Note: More pretrained models will be added soon
+
 ## Notes
 
-For more details/questions please visit the [project page](https://www.adrianbulat.com/binary-points-localisation) or send an email at adrian.bulat@nottingham.ac.uk
+For more details/questions please visit the [project page](https://www.adrianbulat.com/binary-cnn-landmarks) or send an email at adrian.bulat@nottingham.ac.uk
 
 
 
