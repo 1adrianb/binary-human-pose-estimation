@@ -31,7 +31,7 @@ cd bnn.torch/; luarocks make; cd ..;
 
 Install the modified optnet package
 ```bash
-cd optimize-net/; luarocks make; cd ..;
+cd optimize-net/; luarocks make rocks/optnet-scm-1.rockspec; cd ..;
 ```
 
 Run the following command to prepare the files required by the demo. This will download 10 images from the MPII dataset alongside the dataset structure converted to .t7

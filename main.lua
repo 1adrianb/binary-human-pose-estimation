@@ -4,7 +4,7 @@ require 'cudnn'
 require 'paths'
 
 require 'bnn'
-require 'optim'
+local optnet = require 'optnet'
 
 require 'gnuplot'
 require 'image'
@@ -16,12 +16,15 @@ torch.setheaptracking(true)
 torch.setdefaulttensortype('torch.FloatTensor')
 torch.setnumthreads(1)
 
-local model = torch.load('models/humanpose_binary.t7')
+local model = torch.load('models/human_pose_binary.t7')
 model:evaluate()
 
 local fileLists = utils.getFileList(opts)
 local predictions = {}
 local output = torch.CudaTensor(1,16,64,64)
+
+optimize_opts = {inplace=true, reuseBuffers=true, mode='inference'}
+optnet.optimizeMemory(model, torch.zeros(1,3,256,256):cuda(), optimize_opts)
 
 if opts.mode == 'eval' then xlua.progress(0,#fileLists) end
 for i = 1, #fileLists do
