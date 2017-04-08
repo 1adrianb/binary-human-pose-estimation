@@ -2,8 +2,8 @@ local cURL = require 'cURL'
 local paths = require 'paths'
 
 -- Create the directories if needed
-if paths.dirp('dataset') then paths.mkdir('dataset') end
-if paths.dirp('dataset/mpii/images') then paths.mkdir('dataset/mpii/images') end
+if not paths.dirp('dataset') then paths.mkdir('dataset') end
+if not paths.dirp('dataset/mpii/images') then paths.mkdir('dataset/mpii/images') end
 
 -- Url, location
 local fileList = {
