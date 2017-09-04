@@ -1,26 +1,14 @@
 local utils = {}
 
-function utils.getTransform(center, scale, res)
-	local h = 200*scale
-	local t = torch.eye(3)
-	
-	-- Scale
-	t[1][1] = res/h
-	t[2][2] = res/h
-	
-	-- Translate
-	t[1][3] = res*(-center[1]/h+0.5)
-	t[2][3] = res*(-center[2]/h+0.5)
-
-	return t
-end
-
 -- Transform the coordinates from the original image space to the cropped one
 function utils.transform(pt, center, scale, res, invert)
     -- Define the transformation matrix
     local pt_new = torch.ones(3)
     pt_new[1], pt_new[2] = pt[1], pt[2]
-    local t = utils.getTransform(center, scale, res)
+    local h = 200*scale
+    local t = torch.eye(3)
+    t[1][1], t[2][2] = res/h, res/h
+    t[1][3], t[2][3] = res*(-center[1]/h+0.5), res*(-center[2]/h+0.5)
     if invert then
         t = torch.inverse(t)
     end
