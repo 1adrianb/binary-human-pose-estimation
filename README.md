@@ -2,6 +2,8 @@
 
 This code implements a demo of the Binarized Convolutional Landmark Localizers for Human Pose Estimation and Face Alignment with Limited Resources paper by Adrian Bulat and Georgios Tzimiropoulos.
 
+**[2021 Update]: PyTorch repo with training code for BNN available here: https://github.com/1adrianb/binary-networks-pytorch
+
 **For the Face Alignment demo please check: [https://github.com/1adrianb/binary-face-alignment](https://github.com/1adrianb/binary-face-alignment)**
 
 ## Requirements
